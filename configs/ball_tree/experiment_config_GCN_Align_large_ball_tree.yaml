@@ -1,0 +1,50 @@
+seml:
+    executable: kiez/experiment/seml_experiment.py
+    name: kiez_seml_experiment
+    output_dir: logs
+    project_root_dir: /res_path/kiez/
+
+slurm:
+    experiments_per_job: 1
+    sbatch_options:
+        time: 0-10:00
+        ntasks: 1
+        cpus-per-task: 4
+        partition: clara-job
+        mem: 30G
+
+fixed:
+    n_neighbors: 50
+    algorithm_params: {"n_candidates":100}
+    leaf_size: 30
+    algorithm: "ball_tree"
+    p: 2
+    query_samples: 100000
+    target_samples: 100000
+
+grid:
+    dataset_tuple:
+        type: choice
+        options:
+            - ("/res_path/output/results/GCN_Align/D_W_100K_V1/721_5fold/1/", "/res_path/datasets/D_W_100K_V1/")
+            - ("/res_path/output/results/GCN_Align/D_W_100K_V2/721_5fold/1/", "/res_path/datasets/D_W_100K_V2/")
+            - ("/res_path/output/results/GCN_Align/D_Y_100K_V1/721_5fold/1/", "/res_path/datasets/D_Y_100K_V1/")
+            - ("/res_path/output/results/GCN_Align/D_Y_100K_V2/721_5fold/1/", "/res_path/datasets/D_Y_100K_V2/")
+            - ("/res_path/output/results/GCN_Align/EN_DE_100K_V1/721_5fold/1/", "/res_path/datasets/EN_DE_100K_V1/")
+            - ("/res_path/output/results/GCN_Align/EN_DE_100K_V2/721_5fold/1/", "/res_path/datasets/EN_DE_100K_V2/")
+            - ("/res_path/output/results/GCN_Align/EN_FR_100K_V1/721_5fold/1/", "/res_path/datasets/EN_FR_100K_V1/")
+            - ("/res_path/output/results/GCN_Align/EN_FR_100K_V2/721_5fold/1/", "/res_path/datasets/EN_FR_100K_V2/")
+    metric:
+        type: choice
+        options:
+            - "euclidean"
+    hubness:
+        type: choice
+        options:
+            - ("None",{})
+            - ("csls",{})
+            - ("mp",{"method":"normal"})
+            - ("mp",{"method":"empiric"})
+            - ("ls",{"method":"standard"})
+            - ("ls",{"method":"nicdm"})
+            - ("dsl",{"squared":False})
