@@ -9,7 +9,7 @@ import seaborn as sns
 import argparse
 from joblib import Memory
 from autorank import autorank, plot_stats
-from kiezbenchmarking.experiment.modified_autorank import cd_diagram
+from kiezbenchmarking.modified_autorank import cd_diagram
 
 sns.set()
 JOBLIB_DIR = ".joblib_cache"
@@ -656,55 +656,55 @@ if __name__ == "__main__":
     plot_detailled_hubness_hits(
         max_large, f"{output_dir}/detailled_improvement.pdf", hr_pal
     )
-    print("Plotted detailled_hubness_hits")
-    large_boxplot_improvement(
-        hub_improved_hits_50, f"{output_dir}/boxplot_improvement.pdf", pal_exact
-    )
-    print("Plotted large_boxplot_improvement")
-    boxplot_improvement_only_exact(
-        hub_improved_hits_50,
-        f"{output_dir}/boxplot_improvement_only_exact.pdf",
-        hr_pal,
-    )
-    print("Plotted large_boxplot_improvement")
-    boxplot_improvement_ann_to_brute(
-        hub_improved_hits_50_ann_to_brute,
-        f"{output_dir}/boxplot_improvement_ann_to_brute.pdf",
-        pal,
-    )
-    print("Plotted large_boxplot_improvement")
-    create_time_or_memory_plot(
-        max_small, pal, f"{output_dir}/time_small.pdf", "time in s"
-    )
-    print("Plotted time small")
-    create_time_or_memory_plot(
-        max_large, pal, f"{output_dir}/time_large.pdf", "time in s"
-    )
-    print("Plotted time large")
-    create_time_or_memory_plot(
-        max_small,
-        pal,
-        f"{output_dir}/memory_small.pdf",
-        "memory in MB",
-        1048576,
-    )  # MB
-    print("Plotted memory small")
-    create_time_or_memory_plot(
-        max_large,
-        pal,
-        f"{output_dir}/memory_large.pdf",
-        "memory in GB",
-        1073741824,
-    )  # GB
-    print("Plotted memory large")
-    cd_hits(max_all, f"{output_dir}/cd_hubness_hits.pdf")
-    print("Plotted cd diagram")
-    cd_ann_to_brute(max_all, f"{output_dir}/cd_hubness_ann_to_brute.pdf")
-    print("Plotted cd diagram ann to brute")
-    cd_ann_to_brute(
-        max_large,
-        f"{output_dir}/cd_hubness_ann_to_brute_time_large_no_annoy.pdf",
-        value="time in s",
-        remove_ann="Annoy",
-    )
-    print("Plotted cd diagram ann to brute")
+    # print("Plotted detailled_hubness_hits")
+    # large_boxplot_improvement(
+    #     hub_improved_hits_50, f"{output_dir}/boxplot_improvement.pdf", pal_exact
+    # )
+    # print("Plotted large_boxplot_improvement")
+    # boxplot_improvement_only_exact(
+    #     hub_improved_hits_50,
+    #     f"{output_dir}/boxplot_improvement_only_exact.pdf",
+    #     hr_pal,
+    # )
+    # print("Plotted large_boxplot_improvement")
+    # boxplot_improvement_ann_to_brute(
+    #     hub_improved_hits_50_ann_to_brute,
+    #     f"{output_dir}/boxplot_improvement_ann_to_brute.pdf",
+    #     pal,
+    # )
+    # print("Plotted large_boxplot_improvement")
+    # create_time_or_memory_plot(
+    #     max_small, pal, f"{output_dir}/time_small.pdf", "time in s"
+    # )
+    # print("Plotted time small")
+    # create_time_or_memory_plot(
+    #     max_large, pal, f"{output_dir}/time_large.pdf", "time in s"
+    # )
+    # print("Plotted time large")
+    # create_time_or_memory_plot(
+    #     max_small,
+    #     pal,
+    #     f"{output_dir}/memory_small.pdf",
+    #     "memory in MB",
+    #     1048576,
+    # )  # MB
+    # print("Plotted memory small")
+    # create_time_or_memory_plot(
+    #     max_large,
+    #     pal,
+    #     f"{output_dir}/memory_large.pdf",
+    #     "memory in GB",
+    #     1073741824,
+    # )  # GB
+    # print("Plotted memory large")
+    # cd_hits(max_all, f"{output_dir}/cd_hubness_hits.pdf")
+    # print("Plotted cd diagram")
+    # cd_ann_to_brute(max_all, f"{output_dir}/cd_hubness_ann_to_brute.pdf")
+    # print("Plotted cd diagram ann to brute")
+    # cd_ann_to_brute(
+    #     max_large,
+    #     f"{output_dir}/cd_hubness_ann_to_brute_time_large_no_annoy.pdf",
+    #     value="time in s",
+    #     remove_ann="Annoy",
+    # )
+    # print("Plotted cd diagram ann to brute")
