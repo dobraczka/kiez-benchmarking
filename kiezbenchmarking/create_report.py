@@ -3,7 +3,14 @@ from collections import OrderedDict
 
 FILES = OrderedDict(
     [
-        ("Improvement over baseline for hits@", "boxplot_improvement.pdf"),
+        (
+            "Exact NN improvement over baseline (exact NN without hubness reduction) for hits@",
+            "boxplot_improvement_only_exact.pdf",
+        ),
+        (
+            "ANN improvement over baseline (exact NN without hubness reduction) for hits@",
+            "boxplot_improvement_ann_to_brute.pdf",
+        ),
         (
             "Critical distance diagram showing differences between hubness reduction techniques for exact NN with regards to hits@",
             "cd_hubness_hits.pdf",
@@ -32,10 +39,28 @@ T_AND_M = OrderedDict(
     ]
 )
 
+APPROACHES = [
+    "AttrE.pdf",
+    "BootEA.pdf",
+    "ConvE.pdf",
+    "GCN_Align.pdf",
+    "HolE.pdf",
+    "IMUSE.pdf",
+    "IPTransE.pdf",
+    "JAPE.pdf",
+    "MultiKE.pdf",
+    "ProjE.pdf",
+    "RotatE.pdf",
+    "RSN4EA.pdf",
+    "SimplE.pdf",
+    "TransD.pdf",
+    "TransH.pdf",
+]
+
 
 def create_figure(path, caption, width=r"\textwidth"):
     return (
-        r"\begin{figure}" + "\n"
+        r"\begin{figure}[h]" + "\n"
         r"\centering"
         + r"\includegraphics[width="
         + width
@@ -66,9 +91,10 @@ def create_report(input_dir, output_dir):
     )
     for cap, path in T_AND_M.items():
         report += create_figure(f"{input_dir}/{path}", cap)
-    report += r"\end{document}"
+        report += r"\FloatBarrier"
     for k in [1, 5, 10, 25, 50]:
         report += r"\section{Results for hits@" + str(k) + "}\n"
+        report += r"\subsection{General}" + "\n"
         for cap, path in FILES.items():
             if "hits" in cap:
                 cap = f"{cap}{k}"
@@ -76,10 +102,16 @@ def create_report(input_dir, output_dir):
                 report += create_figure(
                     f"{input_dir}/hits_at_{k}/{path}",
                     cap,
-                    width=r"0.9\textwidth",
                 )
             else:
                 report += create_figure(f"{input_dir}/hits_at_{k}/{path}", cap)
+        report += r"\FloatBarrier"
+        report += r"\subsection{Individual embedding approaches}" + "\n"
+        for a in APPROACHES:
+            report += create_figure(
+                f"{input_dir}/hits_at_{k}/{a}",
+                a.replace(".pdf", "").replace("_", ""),
+            )
         report += r"\FloatBarrier"
     report += r"\end{document}"
     with open(f"{output_dir}/additional_report.tex", "w") as out_file:

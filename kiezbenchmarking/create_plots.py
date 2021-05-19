@@ -10,6 +10,7 @@ import argparse
 from joblib import Memory
 from autorank import autorank, plot_stats
 from kiezbenchmarking.modified_autorank import cd_diagram
+from tqdm import tqdm
 
 sns.set()
 JOBLIB_DIR = ".joblib_cache"
@@ -405,6 +406,49 @@ def plot_detailled_hubness_hits(
     fig.savefig(save_path, bbox_inches="tight")
 
 
+def emb_approach_hits(
+    max_all, save_path, pal_exact, emb_approach, hits_value=50, col_wrap=4
+):
+    sns.set(font_scale=FONT_SCALE)
+    tmp = max_all[
+        ~max_all["algorithm"].isin(
+            [RENAMED_ALGOS["kd_tree"], RENAMED_ALGOS["ball_tree"]]
+        )
+    ]
+    tmp = tmp[tmp["emb_approach"] == emb_approach]
+    showlegend = col_wrap == 4
+    order = ["None", *HUBNESS_ORDER]
+    hits_plot = sns.catplot(
+        data=tmp.replace(RENAMED_ALGOS["brute"], "Exact"),
+        kind="bar",
+        y=f"hits@{hits_value}",
+        x="hubness",
+        col_wrap=col_wrap,
+        hue="algorithm",
+        col="dataset",
+        aspect=2,
+        order=order,
+        col_order=DS_ORDER,
+        palette=pal_exact,
+        legend=showlegend,
+    )
+    hits_plot.set_titles("{col_name}")
+    hits_plot.set_xlabels("")
+    for ax in hits_plot.axes.ravel():
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+        ylabel = ax.get_ylabel()
+        ax.set_ylabel(ylabel, fontsize=IMPROVEMENT_FONT_SIZE)
+    if not showlegend:
+        plt.legend(
+            bbox_to_anchor=(2.25, 0.3),
+            loc="center right",
+            fontsize="medium",
+        )
+    hits_plot.savefig(save_path)
+    sns.set(font_scale=1)
+    plt.close("all")
+
+
 def large_boxplot_improvement(
     improv_df, save_path, pal_exact, hits_value=50, col_wrap=4
 ):
@@ -442,6 +486,7 @@ def boxplot_improvement_only_exact(
     improv_df, save_path, pal, hits_value=50, col_wrap=4
 ):
     sns.set(font_scale=FONT_SCALE)
+    showlegend = col_wrap == 4
     tmp = improv_df[improv_df["algorithm"].isin([RENAMED_ALGOS["brute"]])]
     hits_plot = sns.catplot(
         data=tmp,
@@ -454,6 +499,7 @@ def boxplot_improvement_only_exact(
         col_order=DS_ORDER,
         order=HUBNESS_ORDER,
         palette=pal,
+        legend=showlegend,
     )
     hits_plot.set_titles("{col_name}")
     hits_plot.set_xlabels("")
@@ -461,6 +507,13 @@ def boxplot_improvement_only_exact(
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         ylabel = ax.get_ylabel()
         ax.set_ylabel(ylabel, fontsize=IMPROVEMENT_FONT_SIZE)
+    if not showlegend:
+        plt.legend(
+            bbox_to_anchor=(2.25, 0.3),
+            loc="center right",
+            fontsize="medium",
+            # frameon=False,
+        )
     hits_plot.savefig(save_path)
     sns.set(font_scale=1)
 
@@ -468,6 +521,7 @@ def boxplot_improvement_only_exact(
 def boxplot_improvement_ann_to_brute(
     improv_df, save_path, my_pal, hits_value=50, col_wrap=4
 ):
+    showlegend = col_wrap == 4
     sns.set(font_scale=FONT_SCALE)
     hits_plot = sns.catplot(
         data=improv_df,
@@ -481,6 +535,7 @@ def boxplot_improvement_ann_to_brute(
         col="dataset",
         col_order=DS_ORDER,
         order=HUBNESS_ORDER,
+        legend=showlegend,
     )
     hits_plot.set_titles("{col_name}")
     hits_plot.set_xlabels("")
@@ -488,6 +543,13 @@ def boxplot_improvement_ann_to_brute(
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
         ylabel = ax.get_ylabel()
         ax.set_ylabel(ylabel, fontsize=IMPROVEMENT_FONT_SIZE)
+    if not showlegend:
+        plt.legend(
+            bbox_to_anchor=(2.25, 0.3),
+            loc="center right",
+            fontsize="medium",
+            # frameon=False,
+        )
     hits_plot.savefig(save_path)
     sns.set(font_scale=1)
 
@@ -750,6 +812,7 @@ def create_extensive(max_all, max_large, max_small, output_dir):
     improvement_hits = get_all_hits_improvements(max_all, ann_to_brute=False)
     improvement_hits_ann_to_brute = get_all_hits_improvements(max_all)
     hr_to_compare = HUBNESS_ORDER
+    emb_approaches = max_all["emb_approach"].unique()
     for k in hits_values:
         print(f"Starting plots for hits@{k}")
         curr_dir = f"{output_dir}/hits_at_{k}"
@@ -769,8 +832,19 @@ def create_extensive(max_all, max_large, max_small, output_dir):
             hr_to_compare=hr_to_compare,
             plot_time_and_memory=time_and_mem,
             hits_value=k,
-            col_wrap=2,
+            col_wrap=3,
         )
+        for e in tqdm(
+            emb_approaches, desc=f"Plotting hits@{k} plots for approaches"
+        ):
+            emb_approach_hits(
+                max_all,
+                f"{curr_dir}/{e}.pdf",
+                emb_approach=e,
+                pal_exact=pal_exact,
+                hits_value=k,
+                col_wrap=3,
+            )
         print(f"\n Done for {k} \n")
     cd_ann_to_brute(
         max_small,
