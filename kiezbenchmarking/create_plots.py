@@ -268,7 +268,7 @@ def create_improve_df_ann_to_brute(df, wanted_value, colname):
 
 
 @memory.cache
-def get_from_precalculated(max_all):
+def get_from_precalculated(max_all, hits_value=50):
     small_ds = [
         "D-W 15K(V1)",
         "D-W 15K(V2)",
@@ -281,22 +281,22 @@ def get_from_precalculated(max_all):
     ]
     max_small = max_all[max_all["dataset"].isin(small_ds)]
     max_large = max_all[~max_all["dataset"].isin(small_ds)]
-    hub_improved_hits_50 = create_improve_df(
-        max_all, "hits@50", "% hits@50 increase"
+    improve_df = create_improve_df(
+        max_all, f"hits@{hits_value}", f"% hits@{hits_value} increase"
     )
-    hub_improved_hits_50_ann_to_brute = create_improve_df_ann_to_brute(
-        max_all, "hits@50", "% hits@50 increase"
+    improve_df_ann_to_brute = create_improve_df_ann_to_brute(
+        max_all, f"hits@{hits_value}", f"% hits@{hits_value} increase"
     )
     return (
         max_small,
         max_large,
-        hub_improved_hits_50,
-        hub_improved_hits_50_ann_to_brute,
+        improve_df,
+        improve_df_ann_to_brute,
     )
 
 
 @memory.cache
-def get_all_dfs(collection):
+def get_all_dfs(collection, hits_value=50):
     small_results = collection.find(
         {"status": "COMPLETED", "config.target_samples": 15000},
         {"result": 1, "config": 1, "stats": 1},
@@ -310,19 +310,19 @@ def get_all_dfs(collection):
     max_small = small_result_df.loc[
         small_result_df.groupby(
             ["dataset", "hubness", "emb_approach", "algorithm"]
-        )["hits@50"].idxmax()
+        )[f"hits@{hits_value}"].idxmax()
     ]
     max_large = large_result_df.loc[
         large_result_df.groupby(
             ["dataset", "hubness", "emb_approach", "algorithm"]
-        )["hits@50"].idxmax()
+        )[f"hits@{hits_value}"].idxmax()
     ]
     max_all = pd.concat([max_small, max_large])
     hub_improved_hits_50 = create_improve_df(
-        max_all, "hits@50", "% hits@50 increase"
+        max_all, f"hits@{hits_value}", f"% hits@{hits_value} increase"
     )
     hub_improved_hits_50_ann_to_brute = create_improve_df_ann_to_brute(
-        max_all, "hits@50", "% hits@50 increase"
+        max_all, f"hits@{hits_value}", f"% hits@{hits_value} increase"
     )
     return (
         small_result_df,
@@ -336,11 +336,7 @@ def get_all_dfs(collection):
 
 
 def plot_detailled_hubness_hits(
-    df,
-    save_path,
-    pal=None,
-    ds="D-Y 100K(V2)",
-    approaches=None,
+    df, save_path, pal=None, ds="D-Y 100K(V2)", approaches=None, hits_value=50
 ):
     if approaches is None:
         approaches = ["BootEA", "MultiKE", "SimplE"]
@@ -378,7 +374,7 @@ def plot_detailled_hubness_hits(
         x="hubness",
         order=order,
         palette=pal,
-        y="hits@50",
+        y=f"hits@{hits_value}",
         ax=axs[1, 0],
     )
     sns.barplot(
@@ -386,7 +382,7 @@ def plot_detailled_hubness_hits(
         x="hubness",
         order=order,
         palette=pal,
-        y="hits@50",
+        y=f"hits@{hits_value}",
         ax=axs[1, 1],
     )
     sns.barplot(
@@ -394,7 +390,7 @@ def plot_detailled_hubness_hits(
         x="hubness",
         order=order,
         palette=pal,
-        y="hits@50",
+        y=f"hits@{hits_value}",
         ax=axs[1, 2],
     )
     axs[0, 0].set(title=approaches[0], xticklabels=[], xlabel=None)
@@ -409,7 +405,9 @@ def plot_detailled_hubness_hits(
     fig.savefig(save_path, bbox_inches="tight")
 
 
-def large_boxplot_improvement(improv_df, save_path, pal_exact):
+def large_boxplot_improvement(
+    improv_df, save_path, pal_exact, hits_value=50, col_wrap=4
+):
     sns.set(font_scale=FONT_SCALE)
     tmp = improv_df[
         ~improv_df["algorithm"].isin(
@@ -419,10 +417,10 @@ def large_boxplot_improvement(improv_df, save_path, pal_exact):
     hits_plot = sns.catplot(
         data=tmp.replace(RENAMED_ALGOS["brute"], "Exact"),
         kind="box",
-        y="% hits@50 increase",
+        y=f"% hits@{hits_value} increase",
         x="hubness",
         aspect=2,
-        col_wrap=4,
+        col_wrap=col_wrap,
         hue="algorithm",
         col="dataset",
         col_order=DS_ORDER,
@@ -440,18 +438,18 @@ def large_boxplot_improvement(improv_df, save_path, pal_exact):
     sns.set(font_scale=1)
 
 
-def boxplot_improvement_only_exact(improv_df, save_path, pal):
+def boxplot_improvement_only_exact(
+    improv_df, save_path, pal, hits_value=50, col_wrap=4
+):
     sns.set(font_scale=FONT_SCALE)
-    tmp = hub_improved_hits_50[
-        hub_improved_hits_50["algorithm"].isin([RENAMED_ALGOS["brute"]])
-    ]
+    tmp = improv_df[improv_df["algorithm"].isin([RENAMED_ALGOS["brute"]])]
     hits_plot = sns.catplot(
         data=tmp,
         kind="box",
-        y="% hits@50 increase",
+        y=f"% hits@{hits_value} increase",
         x="hubness",
         aspect=2,
-        col_wrap=4,
+        col_wrap=col_wrap,
         col="dataset",
         col_order=DS_ORDER,
         order=HUBNESS_ORDER,
@@ -467,17 +465,19 @@ def boxplot_improvement_only_exact(improv_df, save_path, pal):
     sns.set(font_scale=1)
 
 
-def boxplot_improvement_ann_to_brute(improv_df, save_path, my_pal):
+def boxplot_improvement_ann_to_brute(
+    improv_df, save_path, my_pal, hits_value=50, col_wrap=4
+):
     sns.set(font_scale=FONT_SCALE)
     hits_plot = sns.catplot(
         data=improv_df,
         kind="box",
-        y="% hits@50 increase",
+        y=f"% hits@{hits_value} increase",
         x="hubness",
         hue="algorithm",
         palette=my_pal,
         aspect=2,
-        col_wrap=4,
+        col_wrap=col_wrap,
         col="dataset",
         col_order=DS_ORDER,
         order=HUBNESS_ORDER,
@@ -530,10 +530,12 @@ def create_time_or_memory_plot(
     sns.set(font_scale=1)
 
 
-def improvement_per_emb_approach(improv_df, save_path, my_pal_exact=None):
+def improvement_per_emb_approach(
+    improv_df, save_path, my_pal_exact=None, hits_value=50, col_wrap=4
+):
     sns.set(font_scale=FONT_SCALE)
-    tmp = hub_improved_hits_50[
-        ~hub_improved_hits_50["algorithm"].isin(
+    tmp = improv_df[
+        ~improv_df["algorithm"].isin(
             [RENAMED_ALGOS["kd_tree"], RENAMED_ALGOS["ball_tree"]]
         )
     ]
@@ -541,10 +543,10 @@ def improvement_per_emb_approach(improv_df, save_path, my_pal_exact=None):
         data=tmp.replace(RENAMED_ALGOS["brute"], "Exact"),
         kind="strip",
         dodge=True,
-        y="% hits@50 increase",
+        y=f"% hits@{hits_value} increase",
         x="hubness",
         aspect=2,
-        col_wrap=4,
+        col_wrap=col_wrap,
         hue="algorithm",
         col="emb_approach",
         palette=my_pal_exact,
@@ -559,14 +561,14 @@ def improvement_per_emb_approach(improv_df, save_path, my_pal_exact=None):
     sns.set(font_scale=1)
 
 
-def cd_hits(max_all, save_path):
+def cd_hits(max_all, save_path, hits_value=50):
     matplotlib.rcParams.update({"font.size": 14})
     tmp = max_all[max_all["algorithm"] == RENAMED_ALGOS["brute"]]
     wanted = tmp.pivot_table(
         index=["dataset", "emb_approach"],
         columns=["hubness"],
-        values=["hits@50"],
-    )["hits@50"]
+        values=[f"hits@{hits_value}"],
+    )[f"hits@{hits_value}"]
     result = autorank(wanted)
     plot_stats(result)
     plt.savefig(save_path, bbox_inches="tight")
@@ -618,21 +620,190 @@ def cd_ann_to_brute(
     plt.savefig(save_path, bbox_inches="tight")
 
 
+def create_all_plots(
+    max_all,
+    max_small,
+    max_large,
+    improvement_hits,
+    improvement_hits_ann_to_brute,
+    hr_pal,
+    pal,
+    pal_exact,
+    output_dir,
+    hits_value,
+    hr_to_compare=None,
+    remove_ann=None,
+    plot_time_and_memory=True,
+    col_wrap=4,
+):
+    plot_detailled_hubness_hits(
+        max_large,
+        f"{output_dir}/detailled_improvement.pdf",
+        hr_pal,
+        hits_value=hits_value,
+    )
+    print("Plotted detailled_hubness_hits")
+    large_boxplot_improvement(
+        improvement_hits,
+        f"{output_dir}/boxplot_improvement.pdf",
+        pal_exact,
+        hits_value=hits_value,
+        col_wrap=col_wrap,
+    )
+    print("Plotted large_boxplot_improvement")
+    boxplot_improvement_only_exact(
+        improvement_hits,
+        f"{output_dir}/boxplot_improvement_only_exact.pdf",
+        hr_pal,
+        hits_value=hits_value,
+        col_wrap=col_wrap,
+    )
+    print("Plotted large_boxplot_improvement")
+    boxplot_improvement_ann_to_brute(
+        improvement_hits_ann_to_brute,
+        f"{output_dir}/boxplot_improvement_ann_to_brute.pdf",
+        pal,
+        hits_value=hits_value,
+        col_wrap=col_wrap,
+    )
+    print("Plotted large_boxplot_improvement")
+    if plot_time_and_memory:
+        create_time_or_memory_plot(
+            max_small,
+            pal,
+            f"{output_dir}/time_small.pdf",
+            "time in s",
+        )
+        print("Plotted time small")
+        create_time_or_memory_plot(
+            max_large, pal, f"{output_dir}/time_large.pdf", "time in s"
+        )
+        print("Plotted time large")
+        create_time_or_memory_plot(
+            max_small,
+            pal,
+            f"{output_dir}/memory_small.pdf",
+            "memory in MB",
+            1048576,
+        )  # MB
+        print("Plotted memory small")
+        create_time_or_memory_plot(
+            max_large,
+            pal,
+            f"{output_dir}/memory_large.pdf",
+            "memory in GB",
+            1073741824,
+        )  # GB
+        print("Plotted memory large")
+    cd_hits(max_all, f"{output_dir}/cd_hubness_hits.pdf", hits_value=hits_value)
+    print("Plotted cd diagram")
+    cd_ann_to_brute(
+        max_all,
+        f"{output_dir}/cd_hubness_ann_to_brute.pdf",
+        value=f"hits@{hits_value}",
+        hr_to_compare=hr_to_compare,
+    )
+    print("Plotted cd diagram ann to brute")
+    cd_ann_to_brute(
+        max_large,
+        f"{output_dir}/cd_hubness_ann_to_brute_time_large_no_annoy.pdf",
+        value="time in s",
+        remove_ann=remove_ann,
+    )
+    print("Plotted cd diagram ann to brute")
+    plt.close("all")
+
+
+def get_all_hits_improvements(max_all, ann_to_brute=True, hits_values=None):
+    if hits_values is None:
+        hits_values = [1, 5, 10, 25, 50]
+    improvement = None
+    for k in hits_values:
+        if improvement is None:
+            if ann_to_brute:
+                improvement = create_improve_df_ann_to_brute(
+                    max_all, f"hits@{k}", f"% hits@{k} increase"
+                )
+            else:
+                improvement = create_improve_df(
+                    max_all, f"hits@{k}", f"% hits@{k} increase"
+                )
+        else:
+            if ann_to_brute:
+                improvement = improvement.merge(
+                    create_improve_df_ann_to_brute(
+                        max_all, f"hits@{k}", f"% hits@{k} increase"
+                    )
+                )
+            else:
+                improvement = improvement.merge(
+                    create_improve_df(
+                        max_all, f"hits@{k}", f"% hits@{k} increase"
+                    )
+                )
+    return improvement
+
+
+def create_extensive(max_all, max_large, max_small, output_dir):
+    print("Plotting a lot of plots")
+    hits_values = [1, 5, 10, 25, 50]
+    improvement_hits = get_all_hits_improvements(max_all, ann_to_brute=False)
+    improvement_hits_ann_to_brute = get_all_hits_improvements(max_all)
+    hr_to_compare = HUBNESS_ORDER
+    for k in hits_values:
+        print(f"Starting plots for hits@{k}")
+        curr_dir = f"{output_dir}/hits_at_{k}"
+        if not os.path.exists(curr_dir):
+            os.makedirs(curr_dir)
+        time_and_mem = k == 50
+        create_all_plots(
+            max_all=max_all,
+            max_small=max_small,
+            max_large=max_large,
+            improvement_hits=improvement_hits,
+            improvement_hits_ann_to_brute=improvement_hits_ann_to_brute,
+            hr_pal=hr_pal,
+            pal=pal,
+            pal_exact=pal_exact,
+            output_dir=curr_dir,
+            hr_to_compare=hr_to_compare,
+            plot_time_and_memory=time_and_mem,
+            hits_value=k,
+            col_wrap=2,
+        )
+        print(f"\n Done for {k} \n")
+    cd_ann_to_brute(
+        max_small,
+        f"{output_dir}/cd_hubness_ann_to_brute_time_small.pdf",
+        value="time in s",
+        hr_to_compare=hr_to_compare,
+    )
+    cd_ann_to_brute(
+        max_large,
+        f"{output_dir}/cd_hubness_ann_to_brute_time_large.pdf",
+        value="time in s",
+        hr_to_compare=hr_to_compare,
+    )
+    print("\n ==== DONE ==== \n")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("output_dir")
     parser.add_argument("--remove-cache", action="store_true", default=False)
-    parser.add_argument("--use-csv", action="store_true", default=False)
+    parser.add_argument("--use-mongodb", action="store_true", default=False)
+    parser.add_argument("--hits", type=int, default=50)
+    parser.add_argument("--extensive", action="store_true", default=False)
     args = parser.parse_args()
     output_dir = args.output_dir
-    if args.use_csv:
+    if not args.use_mongodb:
         max_all = pd.read_csv("results/max_all.csv", index_col=0)
         (
             max_small,
             max_large,
             hub_improved_hits_50,
             hub_improved_hits_50_ann_to_brute,
-        ) = get_from_precalculated(max_all)
+        ) = get_from_precalculated(max_all, hits_value=args.hits)
     else:
         if args.remove_cache:
             shutil.rmtree(JOBLIB_DIR)
@@ -649,62 +820,25 @@ if __name__ == "__main__":
             max_all,
             hub_improved_hits_50,
             hub_improved_hits_50_ann_to_brute,
-        ) = get_all_dfs(collection)
-        max_all.to_csv("max_all.csv")
+        ) = get_all_dfs(collection, hits_value=args.hits)
+        max_all.to_csv("results/max_all.csv")
     print("Got dfs")
     pal, pal_exact, hr_pal = create_consistent_palette(max_all)
-    plot_detailled_hubness_hits(
-        max_large, f"{output_dir}/detailled_improvement.pdf", hr_pal
-    )
-    # print("Plotted detailled_hubness_hits")
-    # large_boxplot_improvement(
-    #     hub_improved_hits_50, f"{output_dir}/boxplot_improvement.pdf", pal_exact
-    # )
-    # print("Plotted large_boxplot_improvement")
-    # boxplot_improvement_only_exact(
-    #     hub_improved_hits_50,
-    #     f"{output_dir}/boxplot_improvement_only_exact.pdf",
-    #     hr_pal,
-    # )
-    # print("Plotted large_boxplot_improvement")
-    # boxplot_improvement_ann_to_brute(
-    #     hub_improved_hits_50_ann_to_brute,
-    #     f"{output_dir}/boxplot_improvement_ann_to_brute.pdf",
-    #     pal,
-    # )
-    # print("Plotted large_boxplot_improvement")
-    # create_time_or_memory_plot(
-    #     max_small, pal, f"{output_dir}/time_small.pdf", "time in s"
-    # )
-    # print("Plotted time small")
-    # create_time_or_memory_plot(
-    #     max_large, pal, f"{output_dir}/time_large.pdf", "time in s"
-    # )
-    # print("Plotted time large")
-    # create_time_or_memory_plot(
-    #     max_small,
-    #     pal,
-    #     f"{output_dir}/memory_small.pdf",
-    #     "memory in MB",
-    #     1048576,
-    # )  # MB
-    # print("Plotted memory small")
-    # create_time_or_memory_plot(
-    #     max_large,
-    #     pal,
-    #     f"{output_dir}/memory_large.pdf",
-    #     "memory in GB",
-    #     1073741824,
-    # )  # GB
-    # print("Plotted memory large")
-    # cd_hits(max_all, f"{output_dir}/cd_hubness_hits.pdf")
-    # print("Plotted cd diagram")
-    # cd_ann_to_brute(max_all, f"{output_dir}/cd_hubness_ann_to_brute.pdf")
-    # print("Plotted cd diagram ann to brute")
-    # cd_ann_to_brute(
-    #     max_large,
-    #     f"{output_dir}/cd_hubness_ann_to_brute_time_large_no_annoy.pdf",
-    #     value="time in s",
-    #     remove_ann="Annoy",
-    # )
-    # print("Plotted cd diagram ann to brute")
+    if args.extensive:
+        create_extensive(max_all, max_large, max_small, output_dir)
+    else:
+        create_all_plots(
+            max_all=max_all,
+            max_small=max_small,
+            max_large=max_large,
+            improvement_hits=hub_improved_hits_50,
+            improvement_hits_ann_to_brute=hub_improved_hits_50_ann_to_brute,
+            hr_pal=hr_pal,
+            pal=pal,
+            pal_exact=pal_exact,
+            output_dir=output_dir,
+            hr_to_compare=None,
+            remove_ann="Annoy",
+            plot_time_and_memory=True,
+            hits_value=args.hits,
+        )
