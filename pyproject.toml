@@ -16,7 +16,8 @@ seaborn = "^0.11.1"
 pymongo = "^3.11.3"
 black = "^20.8b1"
 isort = "^5.7.0"
-kiez = {path = "path/to/kiez"}
+kiez = {git = "https://github.com/dobraczka/kiez", tag = "paper-experiments"}
+ipdb = "^0.13.7"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
