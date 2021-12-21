@@ -1,15 +1,16 @@
 import copy
 import logging
 import os
+import time
+from glob import glob
 
 import numpy as np
 import seml
-from kiez import NeighborhoodAlignment
+from kiez import Kiez
 from kiez.analysis import hubness_score
 from kiez.evaluate.eval_metrics import hits
 from kiez.io.data_loading import from_openea
 from sacred import Experiment, Ingredient
-from glob import glob
 
 data_ingredient = Ingredient("dataset")
 ex = Experiment("kiez", ingredients=[data_ingredient])
@@ -76,18 +77,20 @@ def run(
         hub_algo = hub
     algo_params = copy.deepcopy(algorithm_params)
     hubness_params = copy.deepcopy(hub_params)
-    align = NeighborhoodAlignment(
+    start_time_index = time.time()
+    align = Kiez(
         n_neighbors=n_neighbors,
         algorithm=algorithm,
-        algorithm_params=algo_params,
+        algorithm_kwargs=algo_params,
         hubness=hub_algo,
         hubness_params=hubness_params,
-        leaf_size=leaf_size,
         metric=metric,
-        p=p,
     )
     align.fit(emb1, emb2)
+    indexing_time = time.time() - start_time_index
+    start_time_query = time.time()
     dist, ind = align.kneighbors(return_distance=True)
+    query_time = time.time() - start_time_query
     np.save(f"{result_dir}/dist.npy", dist)
     np.save(f"{result_dir}/ind.npy", ind)
     res = hits(ind, gold, k=[1, 5, 10, 25, 50])
@@ -102,6 +105,8 @@ def run(
         return_value="robinhood",
     )
     full_results["robinhood"] = robinhood
+    full_results["indexing_time"] = indexing_time
+    full_results["query_time"] = query_time
     if "nng" in "algorithm":
         print(f"(Removing index from {align._index_source._index}")
         os.remove(align._index_source._index)
