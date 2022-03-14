@@ -8,6 +8,9 @@ If you have [poetry](https://github.com/python-poetry/poetry) installed simply e
 poetry install
 ```
 
+## Pre-calculated knowledge graph embeddings
+The knowledge graph embeddings produced for and used in our study are available via [Zenodo](https://zenodo.org/record/6258620).
+
 ## Pre-calculated results
 We make our results available in `results/max_all.csv`. 
 Our plots can be created with:
