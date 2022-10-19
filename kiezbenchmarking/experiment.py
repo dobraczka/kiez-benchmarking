@@ -4,7 +4,7 @@ import os
 import time
 
 import pymongo
-from kiez import NeighborhoodAlignment
+from kiez import Kiez
 from kiez.analysis import hubness_score
 from kiez.evaluate.eval_metrics import hits
 from kiez.io.data_loading import from_openea
@@ -35,7 +35,7 @@ def run(emb_dir_path, kg_path, neigh_alig_arguments, _run):
     emb1, emb2, kg1_ids, kg2_ids, gold = load_data(emb_dir_path, kg_path)
     args = copy.deepcopy(neigh_alig_arguments)
     start_time = time.time()
-    align = NeighborhoodAlignment(**args)
+    align = Kiez(**args)
     align.fit(emb1, emb2)
     dist, ind = align.kneighbors(return_distance=True)
     execution_time = time.time() - start_time

@@ -1,22 +1,21 @@
-import pymongo
+import argparse
+import itertools
 import os
-import shutil
-import pandas as pd
+
 import matplotlib
 import matplotlib.pyplot as plt
-import itertools
+import pandas as pd
+import pymongo
 import seaborn as sns
-import argparse
-from joblib import Memory
 from autorank import autorank, plot_stats
-from kiezbenchmarking.modified_autorank import cd_diagram
+from matplotlib.patches import Rectangle
 from tqdm import tqdm
 
+from kiezbenchmarking.modified_autorank import cd_diagram
+
 sns.set()
-JOBLIB_DIR = ".joblib_cache"
 FONT_SCALE = 2.5
 IMPROVEMENT_FONT_SIZE = 25
-memory = Memory(JOBLIB_DIR, verbose=0)
 
 IGNORED_APPROACHES = ["AliNet", "MTransE", "RDGCN", "SEA", "TransR"]
 IGNORED_HUBNESS = ["dsl squared"]
@@ -27,14 +26,23 @@ RENAMED_HUBNESS = {
     "mp normal": "MP gauss",
     "csls": "CSLS",
     "dsl": "DSL",
+    "dissimlocal": "DSL",
+    "localscaling nicdm": "NICDM",
+    "localscaling standard": "LS",
+    "mutualproximity empiric": "MP emp",
+    "mutualproximity normal": "MP gauss",
 }
 RENAMED_ALGOS = {
-    "hnsw": "HNSW",
+    "hnsw": "NMSLIB_HNSW",
     "nng": "NGT",
     "rptree": "Annoy",
     "kd_tree": "KDTree",
     "ball_tree": "BallTree",
     "brute": "Brute",
+    "Faiss_HNSW32": "Faiss_HNSW",
+    "Faiss_Flat": "Faiss_Brute",
+    "Faiss_HNSW32_gpu": "Faiss_HNSW_gpu",
+    "Faiss_Flat_gpu": "Faiss_Brute_gpu",
 }
 DS_ORDER = [
     "D-W 15K(V1)",
@@ -71,7 +79,6 @@ def _rename_with_dict(input, rename_dict):
     return input
 
 
-@memory.cache
 def get_mongo_collection():
     uri = os.environ["MONGODB_URI"]
     db_name = os.environ["MONGODB_NAME"]
@@ -117,11 +124,29 @@ def create_df(cursor, is_small):
                 dataset = dataset[0]
             ds = dataset.split("_")
             row["dataset"] = f"{ds[0]}-{ds[1]} {ds[2]}({ds[3]})"
-            row["algorithm"] = _rename_with_dict(
-                d["config"]["algorithm"], RENAMED_ALGOS
-            )
-            row["algorithm_params"] = d["config"]["algorithm_params"]
-            row["algorithm_params"].pop("n_candidates", None)
+            algo_name = d["config"]["algorithm"]
+            row["algorithm"] = _rename_with_dict(algo_name, RENAMED_ALGOS)
+            if not algo_name == "Faiss":
+                row["algorithm_params"] = d["config"]["algorithm_params"]
+                row["algorithm_params"].pop("n_candidates", None)
+            else:
+                algo_params = {
+                    "index_key": d["config"]["index_key"],
+                    "use_gpu": d["config"]["use_gpu"],
+                }
+                index_infos = d["result"]["source_index_infos"]
+                algo_info = (
+                    algo_params["index_key"]
+                    if index_infos == ""
+                    else index_infos["index_key"]
+                )
+                use_gpu = "_gpu" if algo_params["use_gpu"] else ""
+                row["algorithm_params"] = algo_params
+                row["algorithm"] = _rename_with_dict(
+                    d["config"]["algorithm"] + "_" + algo_info + use_gpu,
+                    RENAMED_ALGOS,
+                )
+                print(row["algorithm"])
             row["emb_approach"] = emb_appr
             hubness = d["config"]["hubness"][0]
             hubness_params = d["config"]["hubness"][1]
@@ -143,6 +168,16 @@ def create_df(cursor, is_small):
             row["hits@50"] = d["result"]["hits@50"]
             row["Robin Hood"] = d["result"]["robinhood"]
             row["time in s"] = d["stats"]["real_time"]
+            if "indexing_time" in d["result"]:
+                row["indexing time in s"] = d["result"]["indexing_time"]
+                row["query time in s"] = d["result"]["query_time"]
+                row["source_index_infos"] = d["result"]["source_index_infos"]
+                row["target_index_infos"] = d["result"]["target_index_infos"]
+            else:
+                row["indexing time in s"] = None
+                row["query time in s"] = None
+                row["source_index_infos"] = None
+                row["target_index_infos"] = None
             row["memory"] = d["stats"]["self"]["max_memory_bytes"]
             rows.append(row)
     return pd.DataFrame(rows)
@@ -153,14 +188,12 @@ def check_missing(max_all):
     possible_algo = list(max_all["algorithm"].unique())
     possible_hub = list(max_all["hubness"].unique())
     possible_emb = list(max_all["emb_approach"].unique())
-    existing = set(
-        [
-            tuple(x)
-            for x in max_all[
-                ["dataset", "algorithm", "hubness", "emb_approach"]
-            ].to_numpy()
-        ]
-    )
+    existing = {
+        tuple(x)
+        for x in max_all[
+            ["dataset", "algorithm", "hubness", "emb_approach"]
+        ].to_numpy()
+    }
     wanted = set()
     for element in itertools.product(
         possible_ds, possible_algo, possible_hub, possible_emb
@@ -173,11 +206,11 @@ def check_missing(max_all):
     return wanted, existing, wanted - existing
 
 
-def create_consistent_palette(max_all):
+def create_consistent_palette(max_all, base_palette="Dark2"):
     my_pal = {}
     my_pal_exact = {}
     algos = max_all["algorithm"].unique()
-    for a, c in zip(algos, sns.color_palette("Dark2")):
+    for a, c in zip(algos, sns.color_palette(base_palette)):
         if a == RENAMED_ALGOS["brute"]:
             my_pal_exact["Exact"] = c
         else:
@@ -231,7 +264,15 @@ def get_improvement_hubness_brute(
     ) * 100
 
 
-def create_improve_df_ann_to_brute(df, wanted_value, colname):
+def create_improve_df_ann_to_brute(
+    df, wanted_value, colname, compare_algos=None
+):
+    if not compare_algos:
+        compare_algos = [
+            RENAMED_ALGOS["hnsw"],
+            RENAMED_ALGOS["nng"],
+            RENAMED_ALGOS["rptree"],
+        ]
     baseline = df[
         (df["hubness"] == "None") & (df["algorithm"] == RENAMED_ALGOS["brute"])
     ].copy()
@@ -239,11 +280,7 @@ def create_improve_df_ann_to_brute(df, wanted_value, colname):
     baseline.set_index(new_index, inplace=True)
     hub_improved = None
     for hub in HUBNESS_ORDER:
-        for algo in [
-            RENAMED_ALGOS["hnsw"],
-            RENAMED_ALGOS["nng"],
-            RENAMED_ALGOS["rptree"],
-        ]:
+        for algo in compare_algos:
             if hub_improved is None:
                 hub_improved = (
                     get_improvement_hubness_brute(
@@ -268,7 +305,6 @@ def create_improve_df_ann_to_brute(df, wanted_value, colname):
     return hub_improved.rename(columns={wanted_value: colname})
 
 
-@memory.cache
 def get_from_precalculated(max_all, hits_value=50):
     small_ds = [
         "D-W 15K(V1)",
@@ -296,7 +332,6 @@ def get_from_precalculated(max_all, hits_value=50):
     )
 
 
-@memory.cache
 def get_all_dfs(collection, hits_value=50):
     small_results = collection.find(
         {"status": "COMPLETED", "config.target_samples": 15000},
@@ -475,7 +510,6 @@ def large_boxplot_improvement(
     hits_plot.set_xlabels("")
     for ax in hits_plot.axes.ravel():
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
-        # ax.set_ylim(-20,20)
         ylabel = ax.get_ylabel()
         ax.set_ylabel(ylabel, fontsize=IMPROVEMENT_FONT_SIZE)
     hits_plot.savefig(save_path)
@@ -512,7 +546,6 @@ def boxplot_improvement_only_exact(
             bbox_to_anchor=(2.25, 0.3),
             loc="center right",
             fontsize="medium",
-            # frameon=False,
         )
     hits_plot.savefig(save_path)
     sns.set(font_scale=1)
@@ -548,7 +581,6 @@ def boxplot_improvement_ann_to_brute(
             bbox_to_anchor=(2.25, 0.3),
             loc="center right",
             fontsize="medium",
-            # frameon=False,
         )
     hits_plot.savefig(save_path)
     sns.set(font_scale=1)
@@ -561,6 +593,7 @@ def create_time_or_memory_plot(
     value,
     memory_division=None,
     hue_order=None,
+    col_wrap=None,
 ):
     if hue_order is None:
         hue_order = [
@@ -582,7 +615,7 @@ def create_time_or_memory_plot(
         col="hubness",
         order=hue_order,
         palette=palette,
-        # showfliers=False,
+        col_wrap=col_wrap,
     )
     time_plot.set_titles("{col_name}")
     time_plot.set_xlabels("")
@@ -590,6 +623,68 @@ def create_time_or_memory_plot(
         ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
     time_plot.savefig(save_path)
     sns.set(font_scale=1)
+
+
+def manipulate_palette(pal, luminosity=None, saturation=None):
+    return sns.color_palette(
+        [
+            sns.set_hls_values(col, l=luminosity, s=saturation)
+            for col in list(pal)
+        ]
+    )
+
+
+def _stacked_bar(
+    data,
+    light_palette=None,
+    dark_palette=None,
+    x="algorithm",
+    y1="time in s",
+    y2="indexing time in s",
+    *args,
+    **kwargs,
+):
+    sns.barplot(data=data, x=x, y=y1, palette=light_palette, *args, **kwargs)
+    plot2 = sns.barplot(
+        data=data, x=x, y=y2, palette=dark_palette, *args, **kwargs
+    )
+    plot2.set_xticklabels(plot2.get_xticklabels(), rotation=90)
+    return plot2
+
+
+def create_detailled_time_plot(
+    data,
+    save_path,
+    palette=None,
+    x="algorithm",
+    y1="time in s",
+    y2="indexing time in s",
+    y_label=None,
+    col="hubness",
+    legend_label1="query_time",
+    legend_label2="indexing_time",
+):
+    if not y_label:
+        y_label = y1
+    if not palette:
+        palette = sns.color_palette()
+
+    dark_palette = manipulate_palette(palette, luminosity=0.3)
+    light_palette = manipulate_palette(palette, luminosity=0.6)
+    dark_grey = manipulate_palette(palette, luminosity=0.3, saturation=0)[0]
+    light_grey = manipulate_palette(palette, luminosity=0.6, saturation=0)[0]
+    g = sns.FacetGrid(data, col=col, height=5, aspect=0.8)
+    g.map_dataframe(
+        _stacked_bar, light_palette=light_palette, dark_palette=dark_palette
+    )
+    g.set_ylabels(y_label)
+    g.add_legend(
+        {
+            legend_label1: Rectangle((0, 0), 2, 2, fill=True, color=light_grey),
+            legend_label2: Rectangle((0, 0), 2, 2, fill=True, color=dark_grey),
+        }
+    )
+    g.save_fig(save_path)
 
 
 def improvement_per_emb_approach(
@@ -747,7 +842,7 @@ def create_all_plots(
             f"{output_dir}/memory_small.pdf",
             "memory in MB",
             1048576,
-        )  # MB
+        )
         print("Plotted memory small")
         create_time_or_memory_plot(
             max_large,
@@ -755,7 +850,7 @@ def create_all_plots(
             f"{output_dir}/memory_large.pdf",
             "memory in GB",
             1073741824,
-        )  # GB
+        )
         print("Plotted memory large")
     cd_hits(max_all, f"{output_dir}/cd_hubness_hits.pdf", hits_value=hits_value)
     print("Plotted cd diagram")
@@ -864,14 +959,17 @@ def create_extensive(max_all, max_large, max_small, output_dir):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("output_dir")
-    parser.add_argument("--remove-cache", action="store_true", default=False)
     parser.add_argument("--use-mongodb", action="store_true", default=False)
     parser.add_argument("--hits", type=int, default=50)
     parser.add_argument("--extensive", action="store_true", default=False)
+    parser.add_argument("--gpu", action="store_true", default=False)
     args = parser.parse_args()
     output_dir = args.output_dir
     if not args.use_mongodb:
         max_all = pd.read_csv("results/max_all.csv", index_col=0)
+        if args.gpu:
+            max_gpu = pd.read_csv("results/max_gpu.csv", index_col=0)
+            max_all = max_gpu.append(max_all)
         (
             max_small,
             max_large,
@@ -879,11 +977,6 @@ if __name__ == "__main__":
             hub_improved_hits_50_ann_to_brute,
         ) = get_from_precalculated(max_all, hits_value=args.hits)
     else:
-        if args.remove_cache:
-            shutil.rmtree(JOBLIB_DIR)
-            print("Removed cache")
-        else:
-            print("Using cache")
         collection = get_mongo_collection()
         print(f"Using {output_dir} as output")
         (
@@ -895,7 +988,16 @@ if __name__ == "__main__":
             hub_improved_hits_50,
             hub_improved_hits_50_ann_to_brute,
         ) = get_all_dfs(collection, hits_value=args.hits)
-        max_all.to_csv("results/max_all.csv")
+        if args.gpu:
+            max_all.to_csv("results/max_gpu.csv")
+            tmp = pd.read_csv("results/max_all.csv", index_col=0)
+            max_all = max_all.append(tmp)
+            (
+                max_small,
+                max_large,
+                hub_improved_hits_50,
+                hub_improved_hits_50_ann_to_brute,
+            ) = get_from_precalculated(max_all, hits_value=args.hits)
     print("Got dfs")
     pal, pal_exact, hr_pal = create_consistent_palette(max_all)
     if args.extensive:

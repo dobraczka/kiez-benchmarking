@@ -32,7 +32,6 @@ def get_sorted_rank_groups(result, reverse):
         for j in range(i + 1, len(sorted_ranks)):
             if abs(sorted_ranks[i] - sorted_ranks[j]) <= critical_difference:
                 max_j = j
-                # print(i, j)
         if max_j is not None and max_j > cur_max_j:
             cur_max_j = max_j
             groups.append((i, max_j))
@@ -180,11 +179,11 @@ def cd_diagram(result, reverse, ax, width, tuple_sep="/"):
     side = -0.001
     no_sig_height = 0.1
     start = cline + 0.2
-    for l, r in groups:
+    for left, right in groups:
         plot_line(
             [
-                (rankpos(sorted_ranks[l]) - side, start),
-                (rankpos(sorted_ranks[r]) + side, start),
+                (rankpos(sorted_ranks[left]) - side, start),
+                (rankpos(sorted_ranks[right]) + side, start),
             ],
             linewidth=2.5,
         )

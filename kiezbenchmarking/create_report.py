@@ -94,7 +94,6 @@ def create_report(input_dir, output_dir):
         report += r"\FloatBarrier"
     for k in [1, 5, 10, 25, 50]:
         report += r"\section{Results for hits@" + str(k) + "}\n"
-        # report += r"\subsection{General}" + "\n"
         for cap, path in FILES.items():
             if "hits" in cap:
                 cap = f"{cap}{k}"
@@ -105,13 +104,6 @@ def create_report(input_dir, output_dir):
                 )
             else:
                 report += create_figure(f"{input_dir}/hits_at_{k}/{path}", cap)
-        # report += r"\FloatBarrier"
-        # report += r"\subsection{Individual embedding approaches}" + "\n"
-        # for a in APPROACHES:
-        #     report += create_figure(
-        #         f"{input_dir}/hits_at_{k}/{a}",
-        #         a.replace(".pdf", "").replace("_", ""),
-        #     )
         report += r"\FloatBarrier"
     report += r"\end{document}"
     with open(f"{output_dir}/additional_report.tex", "w") as out_file:
