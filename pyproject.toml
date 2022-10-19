@@ -8,31 +8,32 @@ license = "BSD3"
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 pandas = "^1.2.1"
-joblib = "^1.0.0"
-numpy = "^1.20.0"
+joblib = "^1.2.0"
+numpy = "^1.21.0"
 tqdm = "^4.56.0"
 pymongo = "^3.11.3"
 faiss-cpu = "^1.7.1"
 faiss-gpu = "^1.7.1"
 autofaiss = "^2.4.0"
-kiez = {git = "https://github.com/dobraczka/kiez", branch = "gpu-based"}
+kiez = "^0.4.1"
 seaborn = "^0.11.2"
 matplotlib = "^3.5.1"
 autorank = "^1.1.2"
 
 [tool.poetry.dev-dependencies]
-ipdb = "~0.13"
-mypy = "~0.800"
-pytest = "~6.2.2"
-pytest-cov = "~2.11.1"
-pyproject-flake8 = "~0.0.1-alpha.2"
-flake8-eradicate = "~1.2.0"
-flake8-isort = "~4.1.0"
-flake8-debugger = "~4.0.0"
-flake8-comprehensions = "~3.7.0"
-flake8-print = "~4.0.0"
-nox-poetry = "~0.9.0"
-black = "^21.11b1"
+ipdb = "^0.13.9"
+mypy = "^0.960"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+pyproject-flake8 = "^0.0.1a4"
+flake8-eradicate = "^1.2.1"
+flake8-isort = "^4.1.1"
+flake8-debugger = "^4.1.2"
+flake8-comprehensions = "^3.10.0"
+flake8-print = "^5.0.0"
+nox-poetry = "^1.0.0"
+black = "^22.3.0"
+pytest-mock = "^3.7.0"
 
 
 [build-system]
@@ -49,7 +50,8 @@ show-source = "true"
 statistics = "true"
 
 [tool.black]
-line-length = 80
+line-length = 88
+experimental-string-processing = true
 include = '\.pyi?$'
 exclude = '''
 /(
