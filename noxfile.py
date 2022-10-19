@@ -1,6 +1,6 @@
 from nox_poetry import Session, session
 
-locations = ["kiez", "tests", "noxfile.py"]
+locations = ["kiez-benchmarking", "noxfile.py"]
 
 
 @session()
