@@ -29,9 +29,15 @@ pdflatex additional_report.tex
 ## Reproduce results
 It is easy to run a single experiment:
 ```
-poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --candidates 100 --index-key Flat --use-gpu False ls --method nicdm
+poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --candidates 100 --index-key Flat --no-gpu ls --method nicdm
 ```
 This will automatically download any data if necessary.
+
+You can also track your results with [wandb](https://wandb.ai/) using the `--use-wandb` flag, e.g.:
+
+```
+poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 --use-wandb faiss --candidates 100 --index-key Flat --no-gpu ls --method nicdm
+```
 
 This command shows you the necessary arguments to run an experiment:
 ```

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pendulum
 import pystow
+import wandb
 from kiez import Kiez
 from kiez.evaluate.eval_metrics import hits
 from kiez.hubness_reduction import (
@@ -87,6 +88,7 @@ def run(
     neighbors: int,
     algorithm: NNAlgorithm,
     hubness_reduction: HubnessReduction,
+    use_wandb: bool,
 ):
     emb1, emb2, kg1_ids, kg2_ids, gold = load_data(emb_name, dataset)
     start_time = pendulum.now()
@@ -95,12 +97,15 @@ def run(
     dist, ind = kiez.kneighbors(return_distance=True)
     execution_time = pendulum.now() - start_time
     res = hits(ind, gold, k=[1, 5, 10, 25, 50])
-    for k, k_val in res.items():
-        logger.info(f"hits@{k}: {k_val}")
-    logger.info(
+    res = {f"hits@{k}": k_val for k, k_val in res.items()}
+    click.echo(res)
+    click.echo(
         f"Exection took: {execution_time.hours} hours {execution_time.minutes} minutes"
         f" {execution_time.seconds} seconds {execution_time.microseconds} microseconds"
     )
+    if use_wandb:
+        wandb.log(res)
+        wandb.log({"time in s": execution_time.total_seconds()})
 
 
 @click.group(chain=True, invoke_without_command=True)
@@ -134,31 +139,39 @@ def run(
     required=True,
 )
 @click.option("--neighbors", type=int, required=True)
-def cli(embedding: str, dataset: str, neighbors: int):
+@click.option("--use-wandb/--no-wandb", type=bool, default=False)
+def cli(embedding: str, dataset: str, neighbors: int, use_wandb: bool):
     pass
 
 
-@click.pass_context
-@cli.result_callback(replace=True)
+@cli.result_callback()
 def process_pipeline(
     instances_with_args: List[Tuple[NNAlgorithm | HubnessReduction, Dict]],
     embedding: str,
     dataset: str,
     neighbors: int,
+    use_wandb: bool,
 ):
     nn_algo = None
+    algo_args = None
     hubness_reduction = None
+    hr_args = None
     for inst, args in instances_with_args:
         if isinstance(inst, NNAlgorithm):
-            nn_algo = inst
+            nn_algo, algo_args = inst, args
         elif isinstance(inst, HubnessReduction):
-            hubness_reduction = inst
+            hubness_reduction, hr_args = inst, args
+
+    config = {**click.get_current_context().params, **algo_args, **hr_args}
+    if use_wandb:
+        wandb.init(project="kiez", config=config)
     run(
         emb_name=embedding,
         dataset=dataset,
         neighbors=neighbors,
         algorithm=nn_algo,
         hubness_reduction=hubness_reduction,
+        use_wandb=use_wandb,
     )
 
 
@@ -167,7 +180,7 @@ def process_pipeline(
 @click.option("--metric", type=click.Choice(["l2", "euclidean"], case_sensitive=False))
 @click.option("--index-key", type=str, default=None)
 @click.option("--index-param", type=str, default=None)
-@click.option("--use-gpu", type=bool, default=True)
+@click.option("--use-gpu/--no-gpu", type=bool, default=True)
 def create_faiss(
     candidates: int, metric: str, index_key: str, index_param: str, use_gpu: bool
 ) -> Tuple[Faiss, Dict]:
