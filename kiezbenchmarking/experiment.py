@@ -47,7 +47,7 @@ def _ids_to_dict(ids_df: pd.DataFrame, reorder=True) -> Dict:
     return dict(ids_df.values)
 
 
-def _data_info(dataset: str) -> Tuple[str, str, str, str]:
+def _data_info(dataset: str) -> Tuple[str, str, str]:
     tokens = dataset.split("_")
     return "_".join(tokens[:2]), tokens[2], tokens[3]
 
@@ -153,16 +153,16 @@ def process_pipeline(
     use_wandb: bool,
 ):
     nn_algo = None
-    algo_args = None
     hubness_reduction = None
-    hr_args = None
+    config = {**click.get_current_context().params}
     for inst, args in instances_with_args:
         if isinstance(inst, NNAlgorithm):
-            nn_algo, algo_args = inst, args
+            nn_algo = inst
+            config.update(args)
         elif isinstance(inst, HubnessReduction):
-            hubness_reduction, hr_args = inst, args
+            hubness_reduction = inst
+            config.update(args)
 
-    config = {**click.get_current_context().params, **algo_args, **hr_args}
     if use_wandb:
         wandb.init(project="kiez", config=config)
     run(
