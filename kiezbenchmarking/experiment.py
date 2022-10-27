@@ -175,7 +175,7 @@ def process_pipeline(
     )
 
 
-@cli.command("faiss")
+@cli.command("faiss", help="Use the Faiss nearest neighbor algorithm")
 @click.option("--candidates", type=int, required=True)
 @click.option("--metric", type=click.Choice(["l2", "euclidean"], case_sensitive=False))
 @click.option("--index-key", type=str, default=None)
@@ -198,7 +198,7 @@ def create_faiss(
     )
 
 
-@cli.command("nmslib")
+@cli.command("nmslib", help="Use the NMSLIB HNSW nearest neighbor algorithm")
 @click.option("--candidates", type=int, required=True)
 @click.option(
     "--metric",
@@ -241,7 +241,7 @@ def create_nmslib(
     )
 
 
-@cli.command("nng")
+@cli.command("nng", help="Use the NNG nearest neighbor algorithm")
 @click.option("--candidates", type=int, required=True)
 @click.option(
     "--metric",
@@ -292,7 +292,7 @@ def create_nng(
     )
 
 
-@cli.command("sklearn")
+@cli.command("sklearn", help="Use the sci-kit learn nearest neighbor algorithm family")
 @click.option("--candidates", type=int, required=True)
 @click.option(
     "--algorithm", type=click.Choice(["auto", "ball_tree", "kd_tree", "brute"])
@@ -324,7 +324,7 @@ def create_sklearn(
     )
 
 
-@cli.command("annoy")
+@cli.command("annoy", help="Use the Annoy nearest neighbor algorithm")
 @click.option("--candidates", type=int, required=True)
 @click.option(
     "--metric",
@@ -359,20 +359,20 @@ def create_annoy(
     )
 
 
-@cli.command("csls")
+@cli.command("csls", help="Use the Cross-Domain Local Scaling hubness reduction method")
 @click.option("--k", type=int, default=5)
 def create_csls(k: int) -> Tuple[CSLS, Dict]:
     return CSLS(k=k), click.get_current_context().params
 
 
-@cli.command("dsl")
+@cli.command("dsl", help="Use the DisSimLocal hubness reduction method")
 @click.option("--k", type=int, default=5)
 @click.option("--squared/--not-squared", type=bool, default=True)
 def create_dsl(k: int, squared: bool) -> Tuple[DisSimLocal, Dict]:
     return DisSimLocal(k=k, squared=squared), click.get_current_context().params
 
 
-@cli.command("ls")
+@cli.command("ls", help="Use the Local Scaling hubness reduction method")
 @click.option("--k", type=int, default=5)
 @click.option("--method", type=click.Choice(["standard", "nicdm"]))
 def create_ls(k: int, method: str) -> Tuple[LocalScaling, Dict]:
@@ -381,7 +381,7 @@ def create_ls(k: int, method: str) -> Tuple[LocalScaling, Dict]:
     return LocalScaling(k=k, method=method), click.get_current_context().params
 
 
-@cli.command("mp")
+@cli.command("mp", help="Use the Mutual Proximity hubness reduction method")
 @click.option("--method", type=click.Choice(["normal", "empiric"]))
 def create_mp(k: int, method: str) -> Tuple[MutualProximity, Dict]:
     if method is None:
