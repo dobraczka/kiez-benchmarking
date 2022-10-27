@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import click
 import numpy as np
@@ -146,7 +146,7 @@ def cli(embedding: str, dataset: str, neighbors: int, use_wandb: bool):
 
 @cli.result_callback()
 def process_pipeline(
-    instances_with_args: List[Tuple[NNAlgorithm | HubnessReduction, Dict]],
+    instances_with_args: List[Tuple[Union[NNAlgorithm, HubnessReduction], Dict]],
     embedding: str,
     dataset: str,
     neighbors: int,
