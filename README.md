@@ -64,8 +64,13 @@ poetry install
 conda deactivate
 ```
 ### Queue the experiments
+```
 seml [db_name] add configs/[path_to_config]
+```
+
 ### Run them
+```
 seml [db_name] run
+```
 
 Which starts a SLURM job with all the experiments and saves the results in your MongoDB using [Sacred](https://github.com/IDSIA/sacred).
