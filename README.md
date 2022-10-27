@@ -52,3 +52,20 @@ or for the hubness reduction method:
 ```
 poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --candidates 100 --index-key Flat --use-gpu False ls --help
 ```
+
+## For archival purposes: Using SEML
+
+We originally used [SEML](https://github.com/TUM-DAML/seml) to keep track of results. Please refer to their instructions to set everything up.
+Install the necessary packages inside a conda env (because seml wants you to use a conda env):
+```
+conda create -n kiez python=3.7.1
+conda activate
+poetry install
+conda deactivate
+```
+### Queue the experiments
+seml [db_name] add configs/[path_to_config]
+### Run them
+seml [db_name] run
+
+Which starts a SLURM job with all the experiments and saves the results in your MongoDB using [Sacred](https://github.com/IDSIA/sacred).
