@@ -27,18 +27,22 @@ pdflatex additional_report.tex
 ```
 
 ## Reproduce results
-We use [SEML](https://github.com/TUM-DAML/seml) to keep track of results. If you want to reproduce our results you will have to do the same. Please refer to their instructions to set everything up.
-In the `pyproject.toml` provide the path to the `kiez` library.
-Install the necessary packages inside a conda env (because seml wants you to use a conda env):
+It is easy to run a single experiment:
 ```
-conda create -n kiez python=3.7.1
-poetry install
+poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --candidates 100 --index-key Flat --use-gpu False ls --method nicdm
 ```
-To run the experiments you would use seml:
+This will automatically download any data if necessary.
+
+This command shows you the necessary arguments to run an experiment:
 ```
-# Queue the experiments
-seml [db_name] add configs/[path_to_config]
-# Run them
-seml [db_name] run
+poetry run python kiezbenchmarking/experiment.py --help
 ```
-Which starts a SLURM job with all the experiments and saves the results in your MongoDB using [Sacred](https://github.com/IDSIA/sacred).
+The individual nearest neighbor algorithm and hubness reduction method are declared via subcommand, for which you can also get help (after supplying the required arguments of the base command):
+```
+poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --help
+```
+or for the hubness reduction method:
+
+```
+poetry run python kiezbenchmarking/experiment.py --embedding "AttrE" --dataset "D_W_15K_V1" --neighbors 50 faiss --candidates 100 --index-key Flat --use-gpu False ls --help
+```
