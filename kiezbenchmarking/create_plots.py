@@ -220,7 +220,7 @@ def create_consistent_palette(max_all, base_palette="Dark2"):
         *HUBNESS_ORDER,
         "None",
     ]
-    hr_pal = {a: c for a, c in zip(hub_red, sns.color_palette())}
+    hr_pal = dict(zip(hub_red, sns.color_palette()))
     return my_pal, my_pal_exact, hr_pal
 
 
